@@ -15,17 +15,21 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-
+import { useRouter } from "next/navigation";
+import axiosInstance from "@/utils/axiosInstance";
 // Zod validation schema
 const registerSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
     .max(20, "Username must be less than 20 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers, and underscores"
+    ),
   email: z
     .string()
     .email("Please enter a valid email address")
@@ -33,7 +37,10 @@ const registerSchema = z.object({
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+    ),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -44,7 +51,6 @@ export function SignupForm({
 }: React.ComponentProps<"div">) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   const {
     register,
     handleSubmit,
@@ -53,30 +59,39 @@ export function SignupForm({
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
+  const router = useRouter();
 
-  const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Here you would typically make your API call
-      console.log("Form data:", data);
-      
-      toast.success("Account created successfully!", {
-        description: "Welcome! You can now sign in to your account.",
-      });
-      
-      reset();
-    } catch (error) {
-      toast.error("Registration failed", {
-        description: "Something went wrong. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
+ const onSubmit = async (data: RegisterFormData) => {
+  setIsLoading(true);
+  try {
+    const res = await axiosInstance.post("/v1/users/sign-up", {
+      username: data.username,
+      email: data.email,
+      password: data.password,
+    });
+
+    if (!res.data.success) {
+      throw new Error(res.data.message);
     }
-  };
+
+    toast.success("Account created successfully!", {
+      description: "Welcome! You can now sign in to your account.",
+    });
+
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push("/login");
+    }, 1000);
+
+    reset();
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || "Unexpected error", {
+      description: "Something went wrong. Please try again.",
+    });
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -100,7 +115,9 @@ export function SignupForm({
                   className={cn(errors.username && "border-red-500")}
                 />
                 {errors.username && (
-                  <p className="text-sm text-red-500">{errors.username.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.username.message}
+                  </p>
                 )}
               </div>
 
@@ -126,10 +143,7 @@ export function SignupForm({
                     type={showPassword ? "text" : "password"}
                     placeholder="********"
                     {...register("password")}
-                    className={cn(
-                      errors.password && "border-red-500",
-                      "pr-10"
-                    )}
+                    className={cn(errors.password && "border-red-500", "pr-10")}
                   />
                   <Button
                     type="button"
@@ -147,12 +161,25 @@ export function SignupForm({
                   </Button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Sign up"}
+              <Button
+                type="submit"
+                className="w-full flex justify-center items-center space-x-2"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className=" animate-spin" />
+                    <p>Creating account</p>
+                  </>
+                ) : (
+                  <p>Sign up</p>
+                )}
               </Button>
             </div>
 
