@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
+import { useAuth } from "@/store/useAuth";
 const loginSchema = z.object({
   email: z
     .string()
@@ -35,6 +36,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
   const {
     register,
     handleSubmit,
@@ -51,11 +53,11 @@ export function LoginForm({
         email: data.email,
         password: data.password,
       });
-      console.log(result.data);
       if (!result.data.success) {
         throw new Error(result.data.message);
       }
       toast.success("Login successfully!");
+      login({ username: result.data.data.username, email: result.data.data.email });
       setTimeout(() => {
         setIsLoading(false);
         router.push("/");
@@ -66,12 +68,12 @@ export function LoginForm({
         // backend returned 400/401/500 etc.
         console.error("Server error:", error.response.data);
         toast.error(error.response.data.message || "Something went wrong!");
-        setIsLoading(false)
+        setIsLoading(false);
       } else {
         // network or unexpected error
         console.error("Unexpected error:", error.message);
         toast.error("Unexpected error occurred!");
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
   };
